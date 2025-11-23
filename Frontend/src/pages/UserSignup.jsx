@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import logo from '../assets/uberlogo.png';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { UserDataContext } from '../context/UserContext.jsx';
 
 const UserSignup = () => {
     const [firstName, setFirstName] = useState('');
@@ -9,8 +12,11 @@ const UserSignup = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [userData, setUserData] = useState(null);
+    const navigate = useNavigate();
 
-    const submitHandler = (e) => {
+    const { user, setUser } = React.useContext(UserDataContext);
+    const submitHandler = async (e) => {
+
         e.preventDefault();
         const newUser = {
             fullname: {
@@ -20,11 +26,28 @@ const UserSignup = () => {
             email: email,
             password: password
         }
-        console.log(firstName, lastName, email, password);
-        setFirstName('');
-        setLastName('');
-        setEmail('');
-        setPassword('');
+        console.log(newUser);
+
+        const base = import.meta.env.VITE_BASE_URI;
+        try {
+            const response = await axios.post(`${base}/users/register`, newUser, { withCredentials: true })
+            if (response.status === 201) {
+                const data = response.data
+                setUser(data.user)
+                localStorage.setItem('token', data.token);
+                navigate('/home');
+            } else {
+                console.error('Unexpected response', response)
+            }
+        } catch (err) {
+            console.error('Signup error', err)
+            // optionally show a user-friendly message
+        } finally {
+            setFirstName('');
+            setLastName('');
+            setEmail('');
+            setPassword('');
+        }
     }
     return (
         <div className="p-7 h-screen flex flex-col justify-between">
@@ -89,10 +112,14 @@ const UserSignup = () => {
                     </h3>
                     <input
                         aria-label="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        minLength={6}
                         className="bg-[#eeeeee] mb-6 rounded-lg px-4 py-3 border border-gray-200 w-full text-lg placeholder:text-base
                                     focus:ring-2 focus:ring-black focus:outline-none transition-shadow shadow-sm"
                         type="password"
-                        placeholder="password"
+                        placeholder="password (min 6 chars)"
                     />
 
                     <button
