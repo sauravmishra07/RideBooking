@@ -1,37 +1,25 @@
 const blacklistTokenModel = require('../models/blacklistToken.model');
 const userModel = require('../models/user.model');
-const userService = require("../services/user.service");
+const userService = require('../services/user.service');
 const { validationResult } = require('express-validator');
 
-module.exports.registerUser = async (req, res, next) => {
+module.exports.registerUser = async (req, res) => {
+    // Quick debug — remove after verifying payload
+    console.log('Register payload:', req.body);
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
     try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
-
-        const { fullname, email, password } = req.body;
-
-        const isUserAlready = await userModel.findOne({ email });
-        if (isUserAlready) {
-            return res.status(400).json({ message: 'User already exists' });
-        }
-
-        const hashedPassword = await userModel.hashPassword(password);
-
-        const user = await userService.createUser({
-            firstname: fullname.firstname,
-            lastname: fullname.lastname,
-            email,
-            password: hashedPassword
-        });
-
-        const token = user.generateAuthToken();
-
-        res.status(201).json({ token, user: { ...user.toObject(), password: undefined } });
-        
-    } catch (error) {
-        next(error);  // Pass errors to global error handler
+        const created = await userService.createUser(req.body);
+        // adapt to your existing response shape:
+        return res.status(201).json({ user: created, token: created?.token || null });
+    } catch (err) {
+        console.error('registerUser error:', err);
+        const status = err.status || 500;
+        return res.status(status).json({ message: err.message || 'Internal Server Error' });
     }
 };
 
@@ -61,8 +49,8 @@ module.exports.loginUser = async (req, res, next) => {
         res.cookie('token', token, {
         });
 
-        res.status(200).json({ token, user});
-        
+        res.status(200).json({ token, user });
+
     } catch (error) {
         next(error);  // Pass errors to global error handler
     }
@@ -76,7 +64,7 @@ module.exports.logoutUser = async (req, res, next) => {
     res.clearCookie('token');
     const token = req.cookies.token || req.header.authorization?.split(' ')[1];
 
-    await blacklistTokenModel.create({ token});
+    await blacklistTokenModel.create({ token });
 
     res.status(200).json({ message: 'Logged out successfully' });
 }
