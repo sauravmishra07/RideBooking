@@ -12,24 +12,24 @@ module.exports.registerCaptain = async (req, res, next) => {
 
     const { fullname, email, password, vehicle } = req.body;
 
-    const isCaptainAlreadyExists = await captainModel.findOne({ email});
+    const isCaptainAlreadyExists = await captainModel.findOne({ email });
 
     if (isCaptainAlreadyExists) {
-        return res.status(400).json({ message: "Captain already exists"});
+        return res.status(400).json({ message: "Captain already exists" });
     }
 
     const hashedPassword = await captainModel.hashedPassword(password);
 
     const captain = await captainService.createCaptain({
-        firstname: fullname.firstname,
-        lastname: fullname.lastname,
-        email,
-        password: hashedPassword,
-        color: vehicle.color,
-        plate: vehicle.plate,
-        capacity: vehicle.capacity,
-        vehicleType: vehicle.vehicleType
-    });
+    firstname: fullname?.firstname,
+    lastname: fullname?.lastname,
+    email,
+    password, // plain text — model will hash it
+    color: vehicle?.color,
+    plate: vehicle?.plate,
+    capacity: vehicle?.capacity,
+    vehicleType: vehicle?.vehicleType
+});
 
     const token = captain.generateAuthToken();
 
@@ -41,15 +41,15 @@ module.exports.registerCaptain = async (req, res, next) => {
 module.exports.loginCaptain = async (req, res, next) => {
     const errors = validationResult(req);
 
-    if(!errors.isEmpty()){
-        return res.status(400).json({ errors: errors.array()});
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password} = req.body;
+    const { email, password } = req.body;
 
     const captain = await captainModel.findOne({ email }).select('+password');
 
-    if(!captain) {
+    if (!captain) {
         return res.status(401).json({
             message: "Invalid email or password"
         })
@@ -57,7 +57,7 @@ module.exports.loginCaptain = async (req, res, next) => {
 
     const isMatch = await captain.comparePassword(password);
 
-    if(!isMatch){
+    if (!isMatch) {
         return res.status(401).json({
             message: "Invalid email or password"
         })
